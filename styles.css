@@ -1,0 +1,56 @@
+:root{
+  --bg:#000;
+  --fg:#fff;
+  --border: rgba(255,255,255,.65);
+}
+
+html,body{height:100%;}
+body{
+  margin:0;
+  background:var(--bg);
+  overflow:hidden;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+}
+
+#c{
+  position:fixed;
+  inset:0;
+  width:100vw;
+  height:100vh;
+  background:var(--bg);
+  display:block;
+}
+
+#hud{
+  position:fixed;
+  top:12px;
+  left:12px;
+  z-index:10;
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+  padding:10px;
+  border-radius:10px;
+  background: rgba(0,0,0,.25);
+  backdrop-filter: blur(2px);
+}
+
+.modeBtn{
+  color:var(--fg);
+  background: transparent;
+  border:1px solid var(--border);
+  border-radius:8px;
+  padding:7px 10px;
+  font-size:12px;
+  letter-spacing:.2px;
+  cursor:pointer;
+  user-select:none;
+}
+.modeBtn:hover{ border-color: rgba(255,255,255,.9); }
+.modeBtn[data-active="true"]{ background: rgba(255,255,255,.08); }
+
+@media (max-width: 520px){
+  #hud{ top:8px; left:8px; padding:8px; gap:6px; }
+  .modeBtn{ font-size:11px; padding:6px 8px; }
+}
+

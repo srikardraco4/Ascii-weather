@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>ASCII Weather</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <div id="hud" aria-label="weather controls">
+    <button data-mode="rain" class="modeBtn">Rain</button>
+    <button data-mode="snow" class="modeBtn">Snow</button>
+    <button data-mode="wind" class="modeBtn">Wind</button>
+    <button data-mode="fog" class="modeBtn">Fog</button>
+    <button data-mode="thunder" class="modeBtn">Thunder</button>
+    <button data-mode="sunny" class="modeBtn">Sunny</button>
+    <button data-mode="night" class="modeBtn">Night</button>
+  </div>
+
+  <canvas id="c" aria-label="ASCII weather canvas"></canvas>
+
+  <script src="./main.js" defer></script>
+</body>
+</html>
+
