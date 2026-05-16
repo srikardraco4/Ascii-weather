@@ -17,7 +17,14 @@
     <button data-mode="thunder" class="mode">Thunder</button>
     <button data-mode="sunny" class="mode">Sunny</button>
     <button data-mode="night" class="mode">Night</button>
+
+    <div id="speedbar" class="speedbar" role="group" aria-label="Particle speed">
+      <label for="speed" class="speedlabel">Speed</label>
+      <input id="speed" class="speedinput" type="range" min="0.2" max="10.0" step="0.05" value="1" />
+      <span id="speedval" class="speedval">1.00x</span>
+    </div>
   </div>
+
 
   <script src="app.js" defer></script>
 </body>

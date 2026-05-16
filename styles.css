@@ -54,3 +54,31 @@ html, body {
   border-color: rgba(255, 255, 255, 1);
 }
 
+/* Speed bar */
+#speedbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+#speedbar .speedlabel {
+  color: rgba(255, 255, 255, 0.95);
+  font-size: 13px;
+}
+
+#speedbar .speedinput {
+  width: 160px;
+}
+
+#speedbar .speedval {
+  min-width: 48px;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  text-align: right;
+}
+
+

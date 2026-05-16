@@ -12,6 +12,21 @@
 
   let mode = 'rain';
 
+  // Particle speed multiplier (UI-controlled).
+  const speedEl = document.getElementById('speed');
+  const speedValEl = document.getElementById('speedval');
+  let speedMul = 1;
+  if (speedEl) {
+    const read = () => {
+      const v = Number(speedEl.value);
+      speedMul = Number.isFinite(v) ? v : 1;
+      if (speedValEl) speedValEl.textContent = `${speedMul.toFixed(2)}x`;
+    };
+    speedEl.addEventListener('input', read);
+    read();
+  }
+
+
   // Fixed timestep for consistent movement.
   const FIXED_DT = 1 / 60;
   let acc = 0;
@@ -144,6 +159,9 @@
     // then copying/switching so prevCode represents what's on screen.
     prevCode.fill(0);
     nextCode.fill(0);
+
+    // Re-init rain/snow state for new grid size.
+    resizeRainSnowIfNeeded();
   }
 
   function drawAll() {
@@ -211,55 +229,172 @@
   }
 
 
-  // ---- Mode rendering (procedural per-cell; no particles) ----
+  // ---- Stateful rain/snow (slow & gradual falling) ----
+  // These are rebuilt on resize.
+  let rainDrops = null; // Float32Array per column: current y position in cell units
+  let rainSpeed = null; // Float32Array per column
+  let snowFlakes = null; // Array of {x, y, vy, vx, kind}
+
+  function initRainSnowState() {
+    // Rain: one drop head per column (gives a smooth slow downward flow).
+    rainDrops = new Float32Array(cols);
+    rainSpeed = new Float32Array(cols);
+
+    for (let x = 0; x < cols; x++) {
+      const r = hash2i(x, 17, 9001);
+      const r2 = hash2i(x + 3, 23, 9001);
+      rainDrops[x] = r2 * rows; // start somewhere in the grid
+      // Slow speeds: ~0.7 to 1.4 cells/sec
+      rainSpeed[x] = 0.7 + r * 0.7;
+    }
+
+    // Snow: multiple flakes with gentle drift.
+    const FLakeCount = Math.max(120, Math.floor(cols * rows * 0.035));
+    snowFlakes = new Array(FLakeCount);
+
+    for (let i = 0; i < FLakeCount; i++) {
+      const rx = hash2i(i, 10, 1234);
+      const ry = hash2i(i, 20, 1234);
+      const rs = hash2i(i, 30, 1234);
+      const rv = hash2i(i, 40, 1234);
+      const kindPick = hash2i(i, 50, 1234);
+
+      snowFlakes[i] = {
+        x: rx * cols,
+        y: ry * rows,
+        vy: 0.22 + rv * 0.25 + rs * 0.05, // ~0.22..0.52 cells/sec (slow)
+        vx: (hash2i(i, 60, 1234) - 0.5) * 0.18, // gentle horizontal drift
+        kind: kindPick > 0.55 ? 4 : 3 // '+' vs '*'
+      };
+    }
+  }
+
+  function resizeRainSnowIfNeeded() {
+    // Called from resize/when buffers are recreated.
+    if (cols > 0 && rows > 0) initRainSnowState();
+  }
+
+  function resetNextFrameForModeRainSnow() {
+    // Clear nextCode quickly when we will draw stateful particles.
+    // Uint16Array fill is quite fast.
+    nextCode.fill(0);
+  }
+
+  function drawRainNext() {
+    // Convert rainDrops y (in cell units) into streak chars.
+    // We draw a small vertical streak for each drop head.
+    for (let x = 0; x < cols; x++) {
+      const yHead = rainDrops[x];
+      const yInt = yHead | 0;
+
+      // Draw head + a couple of trail cells below.
+      // Since y increases downward, trail should extend further down.
+      for (let k = 0; k < 3; k++) {
+        const y = yInt + k;
+        if (y < 0 || y >= rows) continue;
+        const idx = y * cols + x;
+
+        // Choose glyph based on sub-cell fraction to avoid static look.
+        const frac = yHead - Math.floor(yHead);
+        const jitter = hash2i(x + k * 7, y + k * 13, 42);
+
+        if (k === 0) {
+          // head: '/' or '.'
+          nextCode[idx] = (jitter > 0.55 ? 2 : 1);
+        } else {
+          // tail: lighter weight '.' or ' '
+          if (frac + jitter * 0.5 > 0.65) nextCode[idx] = 1;
+        }
+      }
+    }
+  }
+
+  function drawSnowNext(time) {
+    // Gentle drifting: also modulate vx by a slow wind term.
+    const wind = Math.sin(time * 0.18) * 0.12;
+
+    for (let i = 0; i < snowFlakes.length; i++) {
+      const f = snowFlakes[i];
+      const x = f.x | 0;
+      const y = f.y | 0;
+      if (x < 0 || x >= cols || y < 0 || y >= rows) continue;
+      const idx = y * cols + x;
+
+      // Small twinkle: occasionally choose alternative char.
+      const tw = valueNoise2D(x * 0.2 + i * 0.01, y * 0.15 + time * 0.08, 777);
+      if (tw > 0.965) {
+        nextCode[idx] = (f.kind === 3 ? 4 : 3);
+      } else {
+        nextCode[idx] = f.kind;
+      }
+    }
+  }
+
+  function stepRainSnow(dt) {
+    const t = simTime;
+
+    if (mode === 'rain') {
+      for (let x = 0; x < cols; x++) {
+        rainDrops[x] += rainSpeed[x] * dt * speedMul;
+        if (rainDrops[x] - 2 > rows) {
+          // respawn above
+          const r2 = hash2i(x, 77, 9001);
+          rainDrops[x] = -r2 * (rows * 0.25 + 2);
+        }
+      }
+    } else if (mode === 'snow') {
+      const wind = Math.sin(t * 0.18) * 0.12;
+      for (let i = 0; i < snowFlakes.length; i++) {
+        const f = snowFlakes[i];
+        f.x += (f.vx + wind) * dt;
+        f.y += f.vy * dt * speedMul;
+
+        if (f.y - 2 > rows) {
+          // respawn above with slight x variation
+          const rx = hash2i(i, 500, 1234);
+          const rv = hash2i(i, 600, 1234);
+          f.x = rx * cols;
+          f.y = -rv * (rows * 0.25 + 2);
+
+          // re-roll kind sometimes
+          const kindPick = hash2i(i, 700, 1234);
+          f.kind = kindPick > 0.55 ? 4 : 3;
+        }
+
+        // wrap x softly
+        if (f.x < -2) f.x = cols + 2;
+        if (f.x > cols + 2) f.x = -2;
+      }
+    }
+  }
+
+  // ---- Mode rendering ----
   function drawFrame(t) {
     const time = t;
     const seed = 1337;
 
-    // Precompute normalized coordinates.
-    // Keep math lightweight.
+    // Clear for this frame.
+    nextCode.fill(0);
+
+    // Stateful rain/snow: draw from particle positions.
+    if (mode === 'rain') {
+      drawRainNext();
+      return;
+    }
+
+    if (mode === 'snow') {
+      drawSnowNext(time);
+      return;
+    }
+
+    // Other modes: keep your existing procedural per-cell look.
     for (let y = 0; y < rows; y++) {
-      const yf = y / Math.max(1, rows - 1);
       for (let x = 0; x < cols; x++) {
-        const xf = x / Math.max(1, cols - 1);
         const idx = y * cols + x;
 
         let code = 0;
 
-        if (mode === 'rain') {
-          // Diagonal streaks: falling down with per-cell x jitter.
-          const jitter = fbm2D(x * 0.22, y * 0.13 + seed, seed, 3);
-          const speed = 1.8 + jitter * 1.6;
-          const p = x * 0.35 + time * speed;
-          const diag = (p - y * 0.9);
-          const w = Math.abs(diag - Math.round(diag));
-
-          // '/' streaks plus '.' droplets
-          if (w < 0.18) {
-            // Occasionally use /
-            code = (jitter > 0.5) ? 2 : 1; // '/' or '.'
-            // Make it a streak by lighting a couple of neighbor rows.
-            const span = (0.12 + jitter * 0.10);
-            if (w > span) code = 0;
-          } else {
-            // random '.'
-            const n = valueNoise2D(x * 0.15 + time * 0.2, y * 0.12 - time * 0.6, seed + 2);
-            if (n > 0.965) code = 1;
-          }
-        } else if (mode === 'snow') {
-          // Drifting down with wind.
-          const wind = Math.sin(time * 0.35) * 0.8;
-          const nx = x / cols + wind * (0.2 + fbm2D(y * 0.03, time * 0.1, seed, 3) * 0.5);
-          const ny = y / rows + time * (0.22 + 0.25 * fbm2D(x * 0.04, time * 0.11, seed + 9, 3));
-
-          const n = fbm2D(nx * 6.0, ny * 6.0, seed + 5, 4);
-          const n2 = valueNoise2D(x * 0.12 + time * 0.06, y * 0.12 - time * 0.10, seed + 7);
-
-          // Combine gating to avoid sync.
-          if (n > 0.73 && n2 > 0.78) {
-            code = (n > 0.83) ? 3 : 4; // '*' or '+'
-          }
-        } else if (mode === 'wind') {
+        if (mode === 'wind') {
           // Horizontal streaks; random phase per row.
           const rowPhase = fbm2D(y * 0.07, seed, seed + 11, 3);
           const flow = time * (1.3 + rowPhase * 1.4);
@@ -402,7 +537,12 @@
     // Keep t in a stable range.
     const t = simTime;
 
-    // Fill nextCode via procedural sampling per mode.
+    // Update stateful particles for rain/snow, then draw.
+    if (mode === 'rain' || mode === 'snow') {
+      stepRainSnow(dt);
+    }
+
+    // Render for the current mode.
     drawFrame(t);
   }
 
@@ -411,6 +551,9 @@
     if (!MODES.includes(m)) return;
     mode = m;
     buttons.forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+
+    // Ensure particle buffers are ready.
+    if (mode === 'rain' || mode === 'snow') resizeRainSnowIfNeeded();
 
     // Force redraw on mode change.
     if (prevCode) prevCode.fill(65535);
