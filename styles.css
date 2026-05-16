@@ -1,56 +1,56 @@
-:root{
-  --bg:#000;
-  --fg:#fff;
-  --border: rgba(255,255,255,.65);
+:root {
+  --bg: #000;
+  --fg: rgba(255, 255, 255, 0.95);
 }
 
-html,body{height:100%;}
-body{
-  margin:0;
-  background:var(--bg);
-  overflow:hidden;
+html, body {
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
 }
 
-#c{
-  position:fixed;
-  inset:0;
-  width:100vw;
-  height:100vh;
-  background:var(--bg);
-  display:block;
+#c {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+  display: block;
 }
 
-#hud{
-  position:fixed;
-  top:12px;
-  left:12px;
-  z-index:10;
-  display:flex;
-  gap:8px;
-  flex-wrap:wrap;
-  padding:10px;
-  border-radius:10px;
-  background: rgba(0,0,0,.25);
-  backdrop-filter: blur(2px);
+#ui {
+  position: fixed;
+  left: 50%;
+  top: 14px;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  z-index: 10;
+  padding: 6px 10px;
 }
 
-.modeBtn{
-  color:var(--fg);
+#ui .mode {
   background: transparent;
-  border:1px solid var(--border);
-  border-radius:8px;
-  padding:7px 10px;
-  font-size:12px;
-  letter-spacing:.2px;
-  cursor:pointer;
-  user-select:none;
+  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 999px;
+  padding: 6px 10px;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: opacity 120ms ease, border-color 120ms ease;
 }
-.modeBtn:hover{ border-color: rgba(255,255,255,.9); }
-.modeBtn[data-active="true"]{ background: rgba(255,255,255,.08); }
 
-@media (max-width: 520px){
-  #hud{ top:8px; left:8px; padding:8px; gap:6px; }
-  .modeBtn{ font-size:11px; padding:6px 8px; }
+#ui .mode:hover {
+  opacity: 0.85;
+  border-color: rgba(255, 255, 255, 1);
+}
+
+#ui .mode.active {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 1);
 }
 
