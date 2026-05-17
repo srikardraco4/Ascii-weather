@@ -16,6 +16,7 @@
   const speedEl = document.getElementById('speed');
   const speedValEl = document.getElementById('speedval');
   let speedMul = 1;
+
   if (speedEl) {
     const read = () => {
       const v = Number(speedEl.value);
@@ -335,7 +336,7 @@
 
     if (mode === 'rain') {
       for (let x = 0; x < cols; x++) {
-        rainDrops[x] += rainSpeed[x] * dt * speedMul;
+        rainDrops[x] += rainSpeed[x] * dt;
         if (rainDrops[x] - 2 > rows) {
           // respawn above
           const r2 = hash2i(x, 77, 9001);
@@ -347,7 +348,7 @@
       for (let i = 0; i < snowFlakes.length; i++) {
         const f = snowFlakes[i];
         f.x += (f.vx + wind) * dt;
-        f.y += f.vy * dt * speedMul;
+        f.y += f.vy * dt;
 
         if (f.y - 2 > rows) {
           // respawn above with slight x variation
@@ -521,6 +522,7 @@
       while (acc >= FIXED_DT) {
         acc -= FIXED_DT;
         stepSimulation(FIXED_DT);
+
       }
 
       // Render after stepping to keep smooth.
@@ -533,7 +535,9 @@
   let simTime = 0;
 
   function stepSimulation(dt) {
-    simTime += dt;
+    // Apply speed multiplier to time for procedural modes too.
+    const dtScaled = dt * speedMul;
+    simTime += dtScaled;
     // Keep t in a stable range.
     const t = simTime;
 
